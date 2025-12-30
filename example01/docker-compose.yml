@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # 1. 패킷을 받는 컨테이너 (XDP 적용 대상)
+  xdp-node:
+    image: pgb0908/xdp-dev:latest
+    container_name: xdp-receiver
+    privileged: true  # XDP 로드를 위해 필수
+    hostname: xdp-target
+    volumes:
+      - ./xdp-tutorial:/xdp-tutorial
+      - /sys/fs/bpf:/sys/fs/bpf
+      - /sys/kernel/debug:/sys/kernel/debug
+      - /lib/modules:/lib/modules:ro
+      - /usr/src:/usr/src:ro
+      
+    networks:
+      xdp-net:
+        ipv4_address: 172.20.0.10  # 고정 IP 할당 (테스트 편의상)
+    command: tail -f /dev/null  # 컨테이너가 꺼지지 않게 유지
+
+  # 2. 패킷을 보내는 컨테이너 (일반 클라이언트)
+  traffic-gen:
+    image: alpine:latest
+    container_name: xdp-sender
+    # 핑 테스트 등을 위해 ping 패키지 설치 후 대기
+    command: >
+      sh -c "apk add --no-cache iputils && tail -f /dev/null"
+    networks:
+      xdp-net:
+        ipv4_address: 172.20.0.11
+
+networks:
+  xdp-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
