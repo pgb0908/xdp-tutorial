@@ -97,7 +97,7 @@ struct record {
 };
 
 struct stats_record {
-	struct record stats[1]; /* Assignment#2: Hint */
+	struct record stats[XDP_ACTION_MAX]; /* Assignment#2: Hint */
 };
 
 static double calc_period(struct record *r, struct record *p)
@@ -117,27 +117,37 @@ static void stats_print(struct stats_record *stats_rec,
 {
 	struct record *rec, *prev;
 	double period;
-	__u64 packets;
-	double pps; /* packets per sec */
+	__u64 packets, bytes;
+	double pps, bps;
 
-	/* Assignment#2: Print other XDP actions stats  */
-	{
-		char *fmt = "%-12s %'11lld pkts (%'10.0f pps)"
-			//" %'11lld Kbytes (%'6.0f Mbits/s)"
-			" period:%f\n";
-		const char *action = action2str(XDP_PASS);
-		rec  = &stats_rec->stats[0];
-		prev = &stats_prev->stats[0];
+	// 헤더 출력
+	printf("%-12s %-18s %-18s %s\n", 
+           "Action", "Packets(pps)", "Bytes(Mbits/s)", "Period");
+
+	/* [Assignment 2] 모든 XDP 액션을 순회하며 출력 */
+	for (int i = 0; i < XDP_ACTION_MAX; i++) {
+		char *fmt = "%-12s %'11lld pkts (%'10.0f pps) %'11lld bytes (%'6.0f Mbits/s) %f\n";
+		const char *action_str = action2str(i); // common 라이브러리 함수
+
+		rec  = &stats_rec->stats[i];
+		prev = &stats_prev->stats[i];
 
 		period = calc_period(rec, prev);
-		if (period == 0)
-		       return;
+		if (period == 0) continue;
 
 		packets = rec->total.rx_packets - prev->total.rx_packets;
-		pps     = packets / period;
+		bytes   = rec->total.rx_bytes   - prev->total.rx_bytes; // [Assignment 1]
 
-		printf(fmt, action, rec->total.rx_packets, pps, period);
+		// 변화가 없는 액션은 출력 생략 (화면 깔끔하게)
+		if (packets == 0 && bytes == 0) continue;
+
+		pps = packets / period;
+		bps = (bytes * 8) / period / 1000000.0; // Mbits/s 계산
+
+		printf(fmt, action_str, rec->total.rx_packets, pps, 
+               rec->total.rx_bytes, bps, period);
 	}
+    printf("\n");
 }
 
 /* BPF_MAP_TYPE_ARRAY */
@@ -155,42 +165,56 @@ void map_get_value_percpu_array(int fd, __u32 key, struct datarec *value)
 	/* For percpu maps, userspace gets a value per possible CPU */
 	// unsigned int nr_cpus = libbpf_num_possible_cpus();
 	// struct datarec values[nr_cpus];
+	
+	unsigned int nr_cpus = libbpf_num_possible_cpus();
+	struct datarec values[nr_cpus];
+	__u64 sum_bytes = 0;
+	__u64 sum_pkts = 0;
+	int i;
 
-	fprintf(stderr, "ERR: %s() not impl. see assignment#3", __func__);
+	if ((bpf_map_lookup_elem(fd, &key, values)) != 0) {
+		fprintf(stderr,
+			"ERR: bpf_map_lookup_elem failed key:0x%X\n", key);
+		return;
+	}
+
+	/* Sum values from each CPU */
+	for (i = 0; i < nr_cpus; i++) {
+		sum_pkts  += values[i].rx_packets;
+		sum_bytes += values[i].rx_bytes;
+	}
+	value->rx_packets = sum_pkts;
+	value->rx_bytes   = sum_bytes;
+
+	//fprintf(stderr, "ERR: %s() not impl. see assignment#3", __func__);
 }
 
-static bool map_collect(int fd, __u32 map_type, __u32 key, struct record *rec)
+
+
+static bool map_collect(int fd, __u32 key, struct record *rec)
 {
 	struct datarec value;
 
 	/* Get time as close as possible to reading map contents */
 	rec->timestamp = gettime();
 
-	switch (map_type) {
-	case BPF_MAP_TYPE_ARRAY:
-		map_get_value_array(fd, key, &value);
-		break;
-	case BPF_MAP_TYPE_PERCPU_ARRAY:
-		/* fall-through */
-	default:
-		fprintf(stderr, "ERR: Unknown map_type(%u) cannot handle\n",
-			map_type);
-		return false;
-		break;
+	if ((bpf_map_lookup_elem(fd, &key, &value)) != 0) {
+		// 맵에 키가 없을 수도 있음 (아직 해당 액션이 발생 안 했을 때 등)
+		// 에러라기보단 0으로 처리
+		value.rx_packets = 0;
+		value.rx_bytes = 0;
 	}
 
-	/* Assignment#1: Add byte counters */
 	rec->total.rx_packets = value.rx_packets;
+	rec->total.rx_bytes   = value.rx_bytes; // [Assignment 1] 값 복사
 	return true;
 }
 
-static void stats_collect(int map_fd, __u32 map_type,
-			  struct stats_record *stats_rec)
+static void stats_collect(int map_fd, struct stats_record *stats_rec)
 {
-	/* Assignment#2: Collect other XDP actions stats  */
-	__u32 key = XDP_PASS;
-
-	map_collect(map_fd, map_type, key, &stats_rec->stats[0]);
+	for (int i = 0; i < XDP_ACTION_MAX; i++) {
+		map_collect(map_fd, i, &stats_rec->stats[i]);
+	}
 }
 
 static void stats_poll(int map_fd, __u32 map_type, int interval)
@@ -200,19 +224,13 @@ static void stats_poll(int map_fd, __u32 map_type, int interval)
 	/* Trick to pretty printf with thousands separators use %' */
 	setlocale(LC_NUMERIC, "en_US");
 
-	/* Print stats "header" */
-	if (verbose) {
-		printf("\n");
-		printf("%-12s\n", "XDP-action");
-	}
-
-	/* Get initial reading quickly */
-	stats_collect(map_fd, map_type, &record);
+	/* 초기값 읽기 */
+	stats_collect(map_fd, &record);
 	usleep(1000000/4);
 
 	while (1) {
-		prev = record; /* struct copy */
-		stats_collect(map_fd, map_type, &record);
+		prev = record; 
+		stats_collect(map_fd, &record);
 		stats_print(&record, &prev);
 		sleep(interval);
 	}
@@ -269,7 +287,6 @@ static int __check_map_fd_info(int map_fd, struct bpf_map_info *info,
 
 int main(int argc, char **argv)
 {
-	struct bpf_map_info map_expect = { 0 };
 	struct bpf_map_info info = { 0 };
 	struct xdp_program *program;
 	int stats_map_fd;
@@ -310,6 +327,10 @@ int main(int argc, char **argv)
 		return EXIT_OK;
 	}
 
+	/* 1. 이 함수 안에서 .o 파일을 읽고, 커널에 로드하고, 
+	 * 내부적으로 bpf_object라는 장부를 생성합니다. 
+	 * common 라이브러리에 정의된 헬퍼 함수   
+	 * 파일 열기 → 커널에 올리기 → 네트워크 카드에 붙이기 */
 	program = load_bpf_and_xdp_attach(&cfg);
 	if (!program)
 		return EXIT_FAIL_BPF;
@@ -320,8 +341,19 @@ int main(int argc, char **argv)
 		printf(" - XDP prog id:%d attached on device:%s(ifindex:%d)\n",
 		       xdp_program__id(program), cfg.ifname, cfg.ifindex);
 	}
+	
+	
+	// [중요] 맵 검증 설정 (Assignment에 맞춰 변경됨)
+	struct bpf_map_info map_expect = { 0 };
+	map_expect.key_size    = sizeof(__u32);
+	map_expect.value_size  = sizeof(struct datarec);
+	map_expect.max_entries = XDP_ACTION_MAX; // [Assignment 2] 크기 확인
+	
+	
 
-	/* Lesson#3: Locate map file descriptor */
+	/* 2. program 구조체에서 장부(bpf_object)를 꺼냅니다. */
+	/* 3. 장부에서 이름표를 보고 FD를 찾습니다.
+ 	* "이 장부에서 이름이 'xdp_stats_map'인 거 찾아줘" */
 	stats_map_fd = find_map_fd(xdp_program__bpf_obj(program), "xdp_stats_map");
 	if (stats_map_fd < 0) {
 		/* xdp_link_detach(cfg.ifindex, cfg.xdp_flags, 0); */

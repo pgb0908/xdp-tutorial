@@ -10,9 +10,9 @@
  */
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, XDP_ACTION_MAX);
 	__type(key, __u32);
 	__type(value, struct datarec);
-	__uint(max_entries, XDP_ACTION_MAX);
 } xdp_stats_map SEC(".maps");
 
 /* LLVM maps __sync_fetch_and_add() as a built-in function to the BPF atomic add
@@ -25,32 +25,28 @@ struct {
 SEC("xdp")
 int  xdp_stats1_func(struct xdp_md *ctx)
 {
-	// void *data_end = (void *)(long)ctx->data_end;
-	// void *data     = (void *)(long)ctx->data;
+	// 1. 패킷 데이터 포인터 가져오기
+	void *data_end = (void *)(long)ctx->data_end;
+	void *data     = (void *)(long)ctx->data;
+	
+	// 2. 패킷 길이 계산 [Assignment 1]
+    	__u64 bytes = data_end - data;
+    	
+    	// 3. 수행할 액션 결정 (여기서는 무조건 PASS)
+    	__u32 action = XDP_PASS;
+	
 	struct datarec *rec;
-	__u32 key = XDP_PASS; /* XDP_PASS = 2 */
+	rec = bpf_map_lookup_elem(&xdp_stats_map, &action);
 
-	/* Lookup in kernel BPF-side return pointer to actual data record */
-	rec = bpf_map_lookup_elem(&xdp_stats_map, &key);
-	/* BPF kernel-side verifier will reject program if the NULL pointer
-	 * check isn't performed here. Even-though this is a static array where
-	 * we know key lookup XDP_PASS always will succeed.
-	 */
-	if (!rec)
-		return XDP_ABORTED;
+	if (rec) {
+		// 5. 원자적 연산(Atomic Operation)으로 값 증가
+		// 여러 CPU가 동시에 접근해도 안전하게 카운트
+		__sync_fetch_and_add(&rec->rx_packets, 1);
+		__sync_fetch_and_add(&rec->rx_bytes, bytes); // 바이트 수 누적
+		lock_xadd(&rec->rx_bytes, bytes);
+	}
 
-	/* Multiple CPUs can access data record. Thus, the accounting needs to
-	 * use an atomic operation.
-	 */
-	lock_xadd(&rec->rx_packets, 1);
-	/* Assignment#1: Add byte counters
-	 * - Hint look at struct xdp_md *ctx (copied below)
-	 *
-	 * Assignment#3: Avoid the atomic operation
-	 * - Hint there is a map type named BPF_MAP_TYPE_PERCPU_ARRAY
-	 */
-
-	return XDP_PASS;
+	return action;
 }
 
 char _license[] SEC("license") = "GPL";
