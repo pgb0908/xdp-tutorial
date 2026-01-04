@@ -16,6 +16,9 @@ docker exec -it xdp-sender ping -c 4 172.20.0.10
 docker exec -it xdp-sender ping6 -c 4 fd00:dead:cafe::10
 docker exec -it xdp-sender ping6 -c 4 -I eth0.100 fc00:100::10
 
+
+docker exec -it xdp-sender socat - 'udp6:[fc00:dead:cafe:1::1]:2000'
+
 xdp-loader unload eth0 -a 
 
 
@@ -27,7 +30,7 @@ docker compose up -d --build
 docker exec -it xdp-receiver bash
 
 xdp-loader unload eth0 -a 
-./xdp_loader xdp_prog_kern.o --dev eth0 --progname xdp_parser_func
+./xdp_loader xdp_prog_kern.o --dev eth0.100 --progname xdp_icmp_echo_func
 
 docker exec -it xdp-sender ping6 fd00:dead:cafe::10
 

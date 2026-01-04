@@ -33,7 +33,7 @@ services:
     
     # [수정됨] VLAN 인터페이스 생성 후 IPv4와 IPv6 주소 모두 할당
     command: >
-      sh -c "apk add --no-cache iputils iproute2 &&
+      sh -c "apk add --no-cache iputils iproute2 socat &&
              ip link add link eth0 name eth0.100 type vlan id 100 &&
              ip addr add 10.10.100.11/24 dev eth0.100 &&
              ip -6 addr add fc00:100::11/64 dev eth0.100 &&
