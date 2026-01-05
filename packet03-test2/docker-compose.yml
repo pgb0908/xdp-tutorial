@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # 1. 왼쪽 방 (Receiver) - 최종 목적지
+  left-env:
+    image: alpine:latest
+    container_name: left-env
+    privileged: true
+    # tcpdump 설치 후 대기
+    command: >
+      sh -c "apk add --no-cache tcpdump iproute2 &&
+             arp -s 172.20.1.10 02:00:00:00:00:01 &&
+             ip route add 172.20.2.0/24 via 172.20.1.10 &&
+             tail -f /dev/null"
+    networks:
+      xdp-left-net:
+        ipv4_address: 172.20.1.2
+        ipv6_address: fc00:1::2
+        mac_address: 02:00:00:00:00:02   # [Target MAC] Destination
+
+  # 2. 라우터 (XDP Node) - 중간 관리자
+  xdp-router:
+    image: pgb0908/xdp-dev:latest
+    container_name: xdp-router
+    privileged: true
+    hostname: xdp-router
+    volumes:
+      - ./xdp-tutorial:/xdp-tutorial
+      - /lib/modules:/lib/modules:ro
+      - /usr/src:/usr/src:ro
+      # DebugFS는 커널 기능을 쓰는 것이라 호스트 공유가 필요합니다 (로그 확인용)
+      - /sys/kernel/debug:/sys/kernel/debug
+      # [변경점] /sys/fs/bpf 볼륨 공유 제거됨 (자체 마운트 사용)
+    
+    # [핵심] 컨테이너 시작 시 BPF 파일시스템을 스스로 마운트합니다.
+    command: >
+      sh -c "mount -t bpf bpf /sys/fs/bpf/ &&
+             tail -f /dev/null"
+
+    networks:
+      xdp-left-net:
+        ipv4_address: 172.20.1.10        # Gateway 충돌 방지용 .10
+        ipv6_address: fc00:1::10
+        mac_address: 02:00:00:00:00:01   # [Router-Left MAC] Source
+      xdp-right-net:
+        ipv4_address: 172.20.2.10        # Gateway 충돌 방지용 .10
+        ipv6_address: fc00:2::10
+        mac_address: 02:00:00:00:00:03   # [Router-Right MAC] Ingress
+
+  # 3. 오른쪽 방 (Sender) - 출발지
+  right-env:
+    image: alpine:latest
+    container_name: right-env
+    privileged: true
+    # ping 도구 설치 후 대기
+    command: >
+      sh -c "apk add --no-cache iputils iproute2 &&
+             arp -s 172.20.2.10 02:00:00:00:00:03 &&
+             ip route add 172.20.1.0/24 via 172.20.2.10 &&
+             tail -f /dev/null"
+    networks:
+      xdp-right-net:
+        ipv4_address: 172.20.2.2
+        ipv6_address: fc00:2::2
+        mac_address: 02:00:00:00:00:04
+
+networks:
+  xdp-left-net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
+        - subnet: fc00:1::/64
+  xdp-right-net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.20.2.0/24
+        - subnet: fc00:2::/64

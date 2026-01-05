@@ -1,0 +1,117 @@
+패킷의 내부 데이터(헤더)를 들여다보고 판단하는 로직을 작성
+
+
+
+이더넷 헤더 파싱 및 패킷 크기 검증
+1. ctx->data(시작)와 ctx->data_end(끝) 포인터
+2. data + sizeof(struct ethhdr) > data_end 조건을 검사하여 패킷이 너무 짧으면 패킷을 드롭하거나 종료
+3. 이더넷 프로토콜 타입을 확인하여 다음 단계로 넘어갈 준비
+
+
+
+
+test2
+
+docker exec xdp-router cat /sys/class/net/eth0/ifindex
+
+docker exec right-env ping 172.20.2.10
+
+./xdp_loader xdp_prog_kern.o -S --dev eth0 --progname xdp_redirect_func
+
+./xdp_loader xdp_prog_kern.o -S --dev eth1 --progname xdp_pass_func
+
+docker exec right-env ping -c 3 172.20.1.2
+docker exec left-env ping -c 3 172.20.2.2
+
+
+./xdp_loader xdp_prog_kern.o -S --dev eth0 --progname xdp_redirect_map_func
+./xdp_loader xdp_prog_kern.o -S --dev eth1 --progname xdp_redirect_map_func
+
+./xdp_prog_user --dev eth0 --redirect-dev eth1 \
+  --src-mac 02:00:00:00:00:04 \
+  --dest-mac 02:00:00:00:00:02
+
+./xdp_prog_user --dev eth1 --redirect-dev eth0 \
+  --src-mac 02:00:00:00:00:02 \
+  --dest-mac 02:00:00:00:00:04
+
+
+
+
+bpftool map dump pinned /sys/fs/bpf/eth1/redirect_params
+
+
+
+
+
+
+
+
+
+# xdp-router 접속
+docker exec -it xdp-router bash
+
+# 컴파일
+cd /xdp-tutorial/packet03-redirecting
+make
+
+# 로드 (오른쪽 인터페이스 eth1에 로드)
+./xdp_loader load -m skb eth1 xdp_prog_kern.o --progname xdp_redirect_func
+
+# (옵션) 왼쪽 인터페이스에는 dummy pass 로드 (패킷이 잘 나가도록)
+./xdp_loader load -m skb eth0 xdp_prog_kern.o --progname xdp_pass_func
+
+
+
+
+
+
+docker exec -it left-env tcpdump -i eth0 -n
+
+
+docker exec right-env ping 172.20.2.1
+
+
+
+docker exec -it xdp-sender ping -c 4 172.20.0.10
+docker exec -it xdp-sender ping6 -c 4 fd00:dead:cafe::10
+docker exec -it xdp-sender ping6 -c 4 -I eth0.100 fc00:100::10
+
+
+docker exec -it xdp-sender socat - 'udp6:[fc00:dead:cafe:1::1]:2000'
+
+xdp-loader unload eth0 -a 
+
+
+docker rm -f xdp-receiver xdp-sender
+
+docker compose up -d --build
+
+# 1. Receiver 컨테이너 접속
+docker exec -it xdp-router bash
+
+xdp-loader unload eth0 -a 
+./xdp_loader xdp_prog_kern.o --dev eth0.100 --progname xdp_icmp_echo_func
+
+docker exec -it xdp-sender ping6 fd00:dead:cafe::10
+
+# 2. 예제 폴더로 이동
+cd basic01-xdp-pass
+
+# 3. 빌드
+make
+
+# 4. XDP 로드 (Generic 모드로 동작할 가능성이 높음)
+./xdp_pass_user --dev eth0
+
+
+
+# 2. 이미지 빌드 (태그 이름은 자유롭게 정하세요. 예: xdp-dev)
+# 형식: docker build -t [Docker ID]/[이미지 이름]:[태그] .
+docker build -t pgb0908/xdp-dev:latest .
+
+# 3. Docker Hub로 푸시
+docker push pgb0908/xdp-dev:latest
+
+
+/sys/fs/bpf/eth0/xdp_stats_map
