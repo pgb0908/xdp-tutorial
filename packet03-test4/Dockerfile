@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y \
     libxdp-dev \
     tcpdump \
     net-tools \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 

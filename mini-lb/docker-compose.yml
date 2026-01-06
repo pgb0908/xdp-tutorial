@@ -1,0 +1,66 @@
+version: '3'  # 경고 메시지에 나오듯 최신 버전에서는 생략 가능합니다.
+services:
+
+  client:
+    image: pgb0908/xdp-dev:latest
+    container_name: client
+    privileged: true
+    entrypoint: /data/client_setup.sh
+    volumes:
+      - ./setup:/data
+    networks:
+      client:
+        ipv4_address: 10.111.220.11
+  gateway:
+    image: pgb0908/xdp-dev:latest
+    container_name: router
+    privileged: true
+    volumes:
+      - ./setup:/data
+    entrypoint: /data/router_setup.sh
+    networks:
+      client:
+        ipv4_address: 10.111.220.12
+      katran:
+        ipv4_address: 10.111.221.12
+      real:
+        ipv4_address: 10.111.222.12
+  katran:
+    image: pgb0908/xdp-dev:latest
+    container_name: katran
+    privileged: true
+    volumes:
+      - ./xdp:/xdp
+      - ./setup:/data
+    entrypoint: /data/katran_setup.sh
+    networks:
+      katran:
+        ipv4_address: 10.111.221.11
+  real:
+    image: pgb0908/xdp-dev:latest
+    container_name: real
+    privileged: true
+    volumes:
+      - ./setup:/data
+    entrypoint: /data/real_setup.sh
+    networks:
+      real:
+        ipv4_address: 10.111.222.11
+
+# --- 수정된 부분 ---
+networks:
+  client:
+    driver: "macvlan"
+    ipam:
+      config:
+        - subnet: 10.111.220.0/24  # .1 -> .0 으로 변경
+  katran:
+    driver: "macvlan"
+    ipam:
+      config:
+        - subnet: 10.111.221.0/24  # .1 -> .0 으로 변경
+  real:
+    driver: "macvlan"
+    ipam:
+      config:
+        - subnet: 10.111.222.0/24  # .1 -> .0 으로 변경
