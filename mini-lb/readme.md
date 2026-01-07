@@ -1,7 +1,9 @@
+
+```mermaid
 graph TD
-%% 노드 정의
-Client["💻 Client<br/>(10.111.220.11)"]
-Real["🖥️ Real Server<br/>(10.111.222.11)<br/>VIP: 192.168.10.1"]
+    %% 노드 정의
+    Client["💻 Client<br/>(10.111.220.11)"]
+    Real["🖥️ Real Server<br/>(10.111.222.11)<br/>VIP: 192.168.10.1"]
 
     %% 논리적 그룹 (Router + Katran)
     subgraph Logical_LB ["⚙️ Logical Load Balancer System"]
