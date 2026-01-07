@@ -1,11 +1,11 @@
 
 ```mermaid
 graph TD
-    %% 노드 정의
-    Client[💻 Client<br/>10.111.220.11]
-    Router[🔀 Router<br/>(Gateway)]
-    Katran[🛡️ Katran (LB)<br/>10.111.221.11<br/>(XDP Program)]
-    Real[🖥️ Real Server<br/>10.111.222.11<br/>(VIP: 192.168.10.1)]
+    %% 노드 정의 (특수문자 포함 시 따옴표 필수)
+    Client["💻 Client<br/>10.111.220.11"]
+    Router["🔀 Router<br/>"]
+    Katran["🛡️ Katran (LB)<br/>10.111.221.11<br/>(XDP Program)"]
+    Real["🖥️ Real Server<br/>10.111.222.11<br/>(VIP: 192.168.10.1)"]
 
     %% 스타일 정의
     style Client fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -25,7 +25,7 @@ graph TD
     Real -- "5. TCP SYN-ACK (Src: VIP)" --> Router
     Router -- "6. Forward (Direct)" --> Client
 
-    %% 설명 링크 (투명)
+    %% 연결선 스타일 (요청: 파랑, 응답: 빨강)
     linkStyle 0,1 stroke:#0000FF,stroke-width:2px,fill:none;
     linkStyle 2,3 stroke:#0000FF,stroke-width:2px,stroke-dasharray: 5 5;
     linkStyle 4,5 stroke:#FF0000,stroke-width:3px;
