@@ -9,60 +9,47 @@
 
 로드 밸런싱의 핵심은 "응답 패킷(Response)이 돌아오는 경로"에 있습니다.
 
-### A. 일반적인 로드 밸런서 (NAT/Proxy 방식)
-응답 트래픽이 반드시 로드 밸런서(LB)를 **다시 거쳐야** 합니다.
-대용량 트래픽 처리 시 **LB가 병목(Bottleneck)**이 될 수 있습니다.
-
 ```mermaid
 graph TD
     %% 노드 정의
     Client(Client)
-    Router(Router / Gateway)
     LB(Load Balancer)
     Real(Real Server)
 
-    %% 스타일
-    style LB fill:#ffcdd2,stroke:#b71c1c,stroke-width:4px
-    style Router fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    subgraph Comparison [대역폭 비교]
+        direction TB
+        
+        %% 1. NAT 방식 (일반)
+        subgraph NAT_Mode [🐢 일반 LB ]
+            direction TB
+            C1(Client)
+            L1(LB)
+            R1(Real Server)
+            
+            C1 -- "요청 (1KB)" --> L1
+            L1 -- "요청 (1KB)" --> R1
+            
+            R1 == "응답 (1GB) 🐢" ==> L1
+            L1 == "응답 (1GB) 🐢" ==> C1
+        end
 
-    %% 흐름 (NAT)
-    Real -- "1. 응답 (Dst: Client)" --> Router
-    Router -- "2. LB로 전달 (Forward)" --> LB
-    LB -- "3. 주소 변환 (SNAT)" --> LB
-    LB -- "4. 다시 Router로 (Return)" --> Router
-    Router -- "5. Client로 (Final)" --> Client
+        %% 2. DSR 방식 (Katran)
+        subgraph DSR_Mode [🚀 Katran ]
+            direction TB
+            C2(Client)
+            K2(Katran)
+            R2(Real Server)
+            
+            C2 -- "요청 (1KB)" --> K2
+            K2 -- "요청 (1KB)" --> R2
+            
+            R2 == "응답 (1GB) 🚀" ==> C2
+        end
+    end
 
-    %% 링크 스타일
-    linkStyle 0,1,2,3,4 stroke:#FF0000,stroke-width:3px;
-
-```
-
-### B.우리가 구현한 Katran (DSR 방식)
-응답 트래픽이 LB를 거치지 않고 Router를 통해 Client로 직접(Direct) 전달됩니다. LB의 부하를 획기적으로 줄여 압도적인 성능을 제공합니다.
-
-
-```mermaid
-graph TD
-    %% 노드 정의
-    Client(Client)
-    Router(Router / Gateway)
-    LB(Katran)
-    Real(Real Server)
-
-    %% 스타일
-    style LB fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 5 5
-    style Router fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
-
-    %% 흐름 (DSR)
-    Real -- "1. 응답 (Dst: Client)" --> Router
-    Router -- "2. 바로 Client로! (Direct)" --> Client
-
-    %% 끊어진 링크 (LB 안 감)
-    Router -.- X(LB 안 들름) -.-> LB
-
-    %% 링크 스타일
-    linkStyle 0,1 stroke:#FF0000,stroke-width:3px;
-    linkStyle 2 stroke:#ccc,stroke-width:1px;
+    %% 스타일링
+    linkStyle 0,1,4,5 stroke-width:1px,stroke:gray;
+    linkStyle 2,3,6 stroke-width:6px,stroke:red;
 ```
 
 ##  Detailed Packet Flow (XDP Implementation)
