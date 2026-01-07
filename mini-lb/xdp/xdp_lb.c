@@ -53,7 +53,7 @@ int xdp_load_balancer(struct xdp_md *ctx) {
     if ((void *)(iph + 1) > data_end)
         return XDP_PASS;
 
-    // TCP가 아니면 통과 (블로그 예제 조건)
+    // TCP가 아니면 통과
     if (iph->protocol != IPPROTO_TCP)
         return XDP_PASS;
 

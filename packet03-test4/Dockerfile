@@ -29,7 +29,10 @@ RUN apt-get update && apt-get install -y \
     libxdp-dev \
     tcpdump \
     net-tools \
+    iptables \
+    iputils-ping \
     netcat-openbsd \
+    ethtool \
     && rm -rf /var/lib/apt/lists/*
 
 

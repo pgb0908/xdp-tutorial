@@ -18,4 +18,8 @@ while True:
         while True:
             data = conn.recv(1024)
             if not data: break
-            conn.sendall(data)
+
+            prefix_str = str(addr) + ": "
+            prefix_bytes = prefix_str.encode('utf-8')
+            response = prefix_bytes + data
+            conn.sendall(response)
