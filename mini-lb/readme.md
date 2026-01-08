@@ -20,45 +20,38 @@ docker exec -it client nc 192.168.10.1 50007
 
 ```mermaid
 graph TD
-    %% 노드 정의
-    Client(Client)
-    LB(Load Balancer)
-    Real(Real Server)
+    Client((Client))
+    Router[Router / L3 Switch]
+    LB[⚖️ Load Balancer<br/>]
+    Real[Real Server]
 
-    subgraph Comparison [대역폭 비교]
-        direction TB
-        
-        %% 1. NAT 방식 (일반)
-        subgraph NAT_Mode [일반 LB ]
-            direction TB
-            C1(Client)
-            L1(LB)
-            R1(Real Server)
-            
-            C1 -- "요청 (1KB)" --> L1
-            L1 -- "요청 (1KB)" --> R1
-            
-            R1 == "응답 (1GB) 🐢" ==> L1
-            L1 == "응답 (1GB) 🐢" ==> C1
-        end
+    %% 물리적 연결 (DSR 구성과 똑같음!)
+    Client --- Router
+    Router --- LB
+    Router --- Real
 
-        %% 2. DSR 방식 (Katran)
-        subgraph DSR_Mode [ Katran ]
-            direction TB
-            C2(Client)
-            K2(Katran)
-            R2(Real Server)
-            
-            C2 -- "요청 (1KB)" --> K2
-            K2 -- "요청 (1KB)" --> R2
-            
-            R2 == "응답 (1GB) " ==> C2
-        end
-    end
+    %% 트래픽 흐름 (여기가 핵심!)
+    %% 1. 요청
+    Client -- "1. 요청" --> Router
+    Router -- "2. 전달" --> LB
+    
+    %% 3. LB가 처리 후 다시 Router로 (Source NAT 필수!)
+    LB -- "3. 주소 변환 후<br/>Router로 다시 보냄" --> Router
+    Router -- "4. 서버로 전달" --> Real
 
-    %% 스타일링
-    linkStyle 0,1,4,5 stroke-width:1px,stroke:gray;
-    linkStyle 2,3,6 stroke-width:6px,stroke:red;
+    %% 5. 응답 (서버는 Router로 보내지만...)
+    Real -- "5. 응답 (Dst: LB IP)" --> Router
+    
+    %% 6. Router는 이걸 다시 LB로 보냄 (비효율 발생!)
+    Router -- "6. LB로 배달<br/>(헤어핀)" --> LB
+    
+    %% 7. LB가 최종 변환 후 나감
+    LB -- "7. 최종 응답" --> Router
+    Router -- "8. Client로" --> Client
+
+    %% 스타일
+    linkStyle 4,5,6,7 stroke:#ff0000,stroke-width:3px;
+    style LB fill:#ffcdd2,stroke:#b71c1c,stroke-width:4px
 ```
 
 ##  Detailed Packet Flow (XDP Implementation)
