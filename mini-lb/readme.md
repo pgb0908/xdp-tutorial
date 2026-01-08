@@ -1,3 +1,12 @@
+# 테스트 방법
+
+docker exec -it client nc 192.168.10.1 50007
+
+# 트러블 슈팅
+
+
+
+
 # Network Architecture & Packet Flow
 
 이 프로젝트는 **XDP(eBPF)**를 활용한 **DSR(Direct Server Return)** 로드 밸런서를 구현합니다.
@@ -20,7 +29,7 @@ graph TD
         direction TB
         
         %% 1. NAT 방식 (일반)
-        subgraph NAT_Mode [🐢 일반 LB ]
+        subgraph NAT_Mode [일반 LB ]
             direction TB
             C1(Client)
             L1(LB)
@@ -34,7 +43,7 @@ graph TD
         end
 
         %% 2. DSR 방식 (Katran)
-        subgraph DSR_Mode [🚀 Katran ]
+        subgraph DSR_Mode [ Katran ]
             direction TB
             C2(Client)
             K2(Katran)
@@ -43,7 +52,7 @@ graph TD
             C2 -- "요청 (1KB)" --> K2
             K2 -- "요청 (1KB)" --> R2
             
-            R2 == "응답 (1GB) 🚀" ==> C2
+            R2 == "응답 (1GB) " ==> C2
         end
     end
 
