@@ -1,6 +1,8 @@
 # 테스트 방법
-
+```shell
 docker exec -it client nc 192.168.10.1 50007
+```
+
 
 # 트러블 슈팅
 

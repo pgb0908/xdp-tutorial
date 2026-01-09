@@ -1,14 +1,17 @@
-패킷의 내부 데이터(헤더)를 들여다보고 판단하는 로직을 작성
 
 
+```shell
 
-이더넷 헤더 파싱 및 패킷 크기 검증
-1. ctx->data(시작)와 ctx->data_end(끝) 포인터
-2. data + sizeof(struct ethhdr) > data_end 조건을 검사하여 패킷이 너무 짧으면 패킷을 드롭하거나 종료
-3. 이더넷 프로토콜 타입을 확인하여 다음 단계로 넘어갈 준비
+# 왼쪽 >> 오른쪽
+docker exec left-env ping -c 3 172.20.2.2
 
+# 오른쪽 >> 왼쪽
+docker exec right-env ping -c 3 172.20.1.2
 
+docker exec xdp-router ./xdp_stats --dev eth0
+```
 
+![img.png](img.png)
 
 test4
 
@@ -18,12 +21,10 @@ docker exec -it xdp-router bash
 ./xdp_loader xdp_prog_kern.o -S --dev eth0 --progname xdp_router_func
 ./xdp_loader xdp_prog_kern.o -S --dev eth1 --progname xdp_router_func
 
-./xdp_stats --dev eth0
 
 
-docker exec right-env ping -c 3 172.20.1.2
-docker exec left-env ping -c 3 172.20.2.2
-docker exec right-env ping -c 3 172.20.2.10
+
+
 
 
 
