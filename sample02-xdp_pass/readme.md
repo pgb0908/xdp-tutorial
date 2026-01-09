@@ -1,9 +1,22 @@
+
+테스트 방법
+```shell
+
+docker exec -it xdp-receiver xdp-loader load eth0 xdp_pass.o
+xdp-loader status
+
 docker exec -it xdp-sender ping 172.20.0.10
+
+docker exec -it xdp-receiver xdp-loader unload eth0
+docker exec -it xdp-receiver xdp-loader load eth0 xdp_drop.o
+xdp-loader status
+
+docker exec -it xdp-sender ping 172.20.0.10
+```
 
 ```shell
 llvm-objdump -S xdp_pass.o
 ```
-
 
 ```shell
 xdp_pass_kern.o:	file format ELF64-BPF
@@ -26,4 +39,6 @@ iProute2 외에도 xdp의 경우 xdp-tool에서 제공하는 xdp-loader를 통�
 ```shell
 xdp-loader load eth0 xdp_pass.o
 xdp-loader status
+
+xdp-loader load eth0 xdp_drop.o
 ```
