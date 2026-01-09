@@ -20,15 +20,4 @@ RUN apt-get update && \
     linux-headers-generic \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. 작업 디렉토리 설정
-WORKDIR /app
-
-# 5. 소스 코드 복사 (Makefile, .c 파일들)
-COPY . .
-
-# 6. 빌드 실행 (Makefile 이용)
-RUN make
-
-# 7. 컨테이너 실행 시 기본 명령어
-# 로더를 실행하여 BPF를 로드합니다.
-CMD ["./my_bpf_loader", "minimal.bpf.o"]
+CMD ["/bin/bash"]

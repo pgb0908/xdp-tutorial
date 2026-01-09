@@ -5,5 +5,6 @@ services:
     image: bpf-example
     privileged: true
     volumes:
+      - ./work:/work
       - /sys/kernel/debug:/sys/kernel/debug
-    command: ./my_bpf_loader minimal.bpf.o
+    command: /work/entrypoint.sh

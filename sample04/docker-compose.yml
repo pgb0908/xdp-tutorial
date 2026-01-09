@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 1. 패킷을 받는 컨테이너
+  xdp-node:
+    image: pgb0908/xdp-dev:latest
+    container_name: xdp-receiver
+    privileged: true
+    hostname: xdp-target
+    volumes:
+      - ./xdp-tutorial:/xdp-tutorial
+      - /lib/modules:/lib/modules:ro
+      - /usr/src:/usr/src:ro
+    networks:
+      xdp-net:
+        ipv4_address: 172.20.0.10
+        ipv6_address: fd00:dead:cafe::10
+    
+    # VLAN 인터페이스 생성 후 IPv4와 IPv6 주소 모두 할당
+    command: >
+      sh -c "/xdp-tutorial/entrypoint.sh"
+
+  # 2. 패킷을 보내는 컨테이너
+  traffic-gen:
+    image: alpine:latest
+    container_name: xdp-sender
+    privileged: true
+    
+    # [수정됨] VLAN 인터페이스 생성 후 IPv4와 IPv6 주소 모두 할당
+    command: >
+      sh -c "apk add --no-cache iputils iproute2 &&
+             ip link add link eth0 name eth0.100 type vlan id 100 &&
+             ip addr add 10.10.100.11/24 dev eth0.100 &&
+             ip -6 addr add fc00:100::11/64 dev eth0.100 &&
+             ip link set up dev eth0.100 &&
+             tail -f /dev/null"
+             
+    networks:
+      xdp-net:
+        ipv4_address: 172.20.0.11
+        ipv6_address: fd00:dead:cafe::11
+
+networks:
+  xdp-net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+        - subnet: fd00:dead:cafe::/64

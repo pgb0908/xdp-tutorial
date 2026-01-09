@@ -16,3 +16,12 @@ make
 
 # 4. XDP 로드 (Generic 모드로 동작할 가능성이 높음)
 ./xdp_pass_user --dev eth0
+
+
+
+# 2. 이미지 빌드 (태그 이름은 자유롭게 정하세요. 예: xdp-dev)
+# 형식: docker build -t [Docker ID]/[이미지 이름]:[태그] .
+docker build -t pgb0908/xdp-dev:latest .
+
+# 3. Docker Hub로 푸시
+docker push pgb0908/xdp-dev:latest
