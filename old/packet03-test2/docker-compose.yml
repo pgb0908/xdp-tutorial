@@ -25,7 +25,7 @@ services:
     privileged: true
     hostname: xdp-router
     volumes:
-      - ./xdp-tutorial:/xdp-tutorial
+      - ./xdp:/xdp
       - /lib/modules:/lib/modules:ro
       - /usr/src:/usr/src:ro
       # DebugFS는 커널 기능을 쓰는 것이라 호스트 공유가 필요합니다 (로그 확인용)

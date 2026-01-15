@@ -1,0 +1,50 @@
+services:
+  # 로드밸런서 (XDP 실행 노드)
+  lb:
+    image: ubuntu:22.04
+    container_name: xdp-lb
+    privileged: true  # eBPF 로드 및 네트워크 조작 필수
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    volumes:
+      - ./:/code       # 현재 디렉토리(lb.c 포함)를 마운트
+      - /sys/kernel/debug:/sys/kernel/debug
+    command: tail -f /dev/null # 컨테이너 꺼지지 않게 유지
+    networks:
+      xdp_net:
+        ipv4_address: 172.20.0.10
+
+  # 백엔드 서버 1
+  backend-1:
+    image: hashicorp/http-echo
+    container_name: backend-1
+    command: -text="Hello from Backend 1"
+    networks:
+      xdp_net:
+        ipv4_address: 172.20.0.11
+
+  # 백엔드 서버 2
+  backend-2:
+    image: hashicorp/http-echo
+    container_name: backend-2
+    command: -text="Hello from Backend 2"
+    networks:
+      xdp_net:
+        ipv4_address: 172.20.0.12
+
+  # 클라이언트 (테스트용)
+  client:
+    image: curlimages/curl
+    container_name: xdp-client
+    command: tail -f /dev/null
+    networks:
+      xdp_net:
+        ipv4_address: 172.20.0.20
+
+networks:
+  xdp_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

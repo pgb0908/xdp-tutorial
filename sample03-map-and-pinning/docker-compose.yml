@@ -8,7 +8,7 @@ services:
     privileged: true  # XDP 로드를 위해 필수
     hostname: xdp-target
     volumes:
-      - ./xdp-tutorial:/xdp-tutorial
+      - ./xdp:/xdp
       - /sys/kernel/debug:/sys/kernel/debug
       - /lib/modules:/lib/modules:ro
       - /usr/src:/usr/src:ro

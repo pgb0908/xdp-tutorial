@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # 트래픽을 보내는 클라이언트
+  client:
+    image: praqma/network-multitool
+    container_name: client
+    networks:
+      net_client:
+        ipv4_address: 10.10.10.10
+    cap_add:
+      - NET_ADMIN
+    command: /bin/bash -c "ip route del default && ip route add default via 10.10.10.2 && tail -f /dev/null"
+
+  # XDP 프로그램이 실행될 노드 (라우터 역할)
+  xdp-node:
+    image: pgb0908/xdp-dev:latest
+    container_name: xdp-node
+    privileged: true  # XDP 로드를 위해 필수
+    volumes:
+      - ./xdp:/xdp
+    entrypoint: /xdp/setup.sh
+    networks:
+      net_client:
+        ipv4_address: 10.10.10.2  # eth0
+      net_server:
+        ipv4_address: 10.20.20.2  # eth1
+
+  # 목적지 서버 1
+  server1:
+    image: nginx:alpine
+    container_name: server1
+    networks:
+      net_server:
+        ipv4_address: 10.20.20.100
+    cap_add:
+      - NET_ADMIN
+    command: /bin/sh -c "ip route del default && ip route add default via 10.20.20.2 && nginx -g 'daemon off;'"
+
+  # 목적지 서버 2
+  server2:
+    image: nginx:alpine
+    container_name: server2
+    networks:
+      net_server:
+        ipv4_address: 10.20.20.200
+    cap_add:
+      - NET_ADMIN
+    command: /bin/sh -c "ip route del default && ip route add default via 10.20.20.2 && nginx -g 'daemon off;'"
+
+networks:
+  net_client:
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+  net_server:
+    ipam:
+      config:
+        - subnet: 10.20.20.0/24

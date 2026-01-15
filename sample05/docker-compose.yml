@@ -32,7 +32,7 @@ services:
       - net.ipv6.conf.all.forwarding=1
 
     volumes:
-      - ./xdp-tutorial:/xdp-tutorial
+      - ./xdp:/xdp
       - /lib/modules:/lib/modules:ro
       - /usr/src:/usr/src:ro
       - /sys/kernel/debug:/sys/kernel/debug

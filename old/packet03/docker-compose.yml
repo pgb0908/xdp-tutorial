@@ -8,7 +8,7 @@ services:
     privileged: true
     hostname: xdp-target
     volumes:
-      - ./xdp-tutorial:/xdp-tutorial
+      - ./xdp:/xdp
       - /lib/modules:/lib/modules:ro
       - /usr/src:/usr/src:ro
     networks:
