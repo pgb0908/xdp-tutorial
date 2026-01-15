@@ -3,13 +3,13 @@
 ```shell
 
 docker exec -it xdp-receiver xdp-loader load eth0 xdp_pass.o
-xdp-loader status
+docker exec -it xdp-receiver xdp-loader status
 
 docker exec -it xdp-sender ping 172.20.0.10
 
-docker exec -it xdp-receiver xdp-loader unload eth0
+docker exec -it xdp-receiver xdp-loader unload eth0 -a
 docker exec -it xdp-receiver xdp-loader load eth0 xdp_drop.o
-xdp-loader status
+docker exec -it xdp-receiver xdp-loader status
 
 docker exec -it xdp-sender ping 172.20.0.10
 ```
