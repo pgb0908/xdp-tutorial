@@ -19,7 +19,6 @@ services:
     privileged: true  # XDP 로드를 위해 필수
     volumes:
       - ./xdp:/xdp
-    entrypoint: /xdp/setup.sh
     command: >
       /bin/bash -c "
       cd /xdp &&
