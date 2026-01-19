@@ -4,7 +4,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
-// The parsing helper functions from the sample04 lesson have moved here
+// The parsing helper functions from the sample04-packet_parsing lesson have moved here
 #include "./common/parsing_helpers.h"
 
 /* Defines xdp_stats_map */

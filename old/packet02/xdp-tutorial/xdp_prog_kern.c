@@ -4,7 +4,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
-// The parsing helper functions from the sample04 lesson have moved here
+// The parsing helper functions from the sample04-packet_parsing lesson have moved here
 #include "./common/parsing_helpers.h"
 
 /* Defines xdp_stats_map */
@@ -142,7 +142,7 @@ int xdp_vlan_swap_func(struct xdp_md *ctx)
 	return XDP_PASS;
 }
 
-/* Solution to the parsing exercise in lesson sample04. Handles VLANs and legacy
+/* Solution to the parsing exercise in lesson sample04-packet_parsing. Handles VLANs and legacy
  * IP (via the helpers in parsing_helpers.h).
  */
 SEC("xdp")

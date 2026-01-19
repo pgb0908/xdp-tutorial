@@ -12,7 +12,7 @@
  * All return values are in host byte order.
  *
  * The versions of the functions included here are slightly expanded versions of
- * the functions in the sample04 lesson. For instance, the Ethernet header
+ * the functions in the sample04-packet_parsing lesson. For instance, the Ethernet header
  * parsing has support for parsing VLAN tags.
  */
 
