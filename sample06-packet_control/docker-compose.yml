@@ -19,15 +19,7 @@ services:
     privileged: true  # XDP 로드를 위해 필수
     volumes:
       - ./xdp:/xdp
-    command: >
-      /bin/bash -c "
-      cd /xdp &&
-      make clean &&
-      make &&
-      sysctl -w net.ipv4.ip_forward=1 &&
-      ip link set dev eth0 xdpobj xdp_prog.o sec xdp || true &&
-      tail -f /dev/null
-      "
+    entrypoint: /xdp/setup.sh
     networks:
       net_client:
         ipv4_address: 10.10.10.2  # eth0

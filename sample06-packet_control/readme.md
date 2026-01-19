@@ -49,6 +49,13 @@ graph LR
     style eth0 fill:#ffccbc,stroke:#d84315
 ```
 
+```shell
+docker exec -it xdp-node /bin/bash
+./ctl.sh s1    # 서버 1 모드로 변경
+./ctl.sh drop  # 드랍 모드로 변경
+
+bpftool map dump name config_map
+```
 
 ```shell
 docker exec -it xdp-node bpftool map update name config_map key 0 0 0 0 value 0 0 0 0
